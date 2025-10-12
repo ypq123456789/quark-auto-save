@@ -471,6 +471,7 @@ def add_task():
 # 定时任务执行的函数
 def run_python(args):
     logging.info(f">>> 定时运行任务")
+    process = None
     try:
         # 使用 subprocess 替代 os.system，并设置超时时间（默认30分钟）
         timeout = int(os.environ.get("TASK_TIMEOUT", "1800"))  # 秒
@@ -495,11 +496,21 @@ def run_python(args):
             logging.error(f">>> 任务执行失败，返回码: {result.returncode}")
             if result.stderr:
                 logging.error(f"错误信息: {result.stderr[:500]}")
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
         logging.error(f">>> 任务执行超时（超过 {timeout} 秒），已强制终止")
+        # 尝试终止进程
+        if e.process:
+            try:
+                e.process.kill()
+                logging.info(">>> 已终止超时进程")
+            except:
+                pass
     except Exception as e:
         logging.error(f">>> 任务执行异常: {str(e)}")
         logging.error(traceback.format_exc())
+    finally:
+        # 确保函数能够正常返回
+        logging.debug(f">>> run_python 函数执行完成")
 
 
 # 重新加载任务
@@ -515,6 +526,10 @@ def reload_tasks():
             trigger=trigger,
             args=[f"{SCRIPT_PATH} {CONFIG_PATH}"],
             id=SCRIPT_PATH,
+            max_instances=1,  # 最多允许1个实例运行
+            coalesce=True,  # 合并错过的任务,避免堆积
+            misfire_grace_time=300,  # 错过任务的宽限期(秒),超过则跳过
+            replace_existing=True,  # 替换已存在的同ID任务
         )
         if scheduler.state == 0:
             scheduler.start()
