@@ -1,0 +1,130 @@
+# ✅ PR 准备完成 - 最终验证
+
+## 🔍 验证步骤
+
+### 1. 验证你的分支改动（重要！）
+
+**访问这个链接查看改动：**
+```
+https://github.com/ypq123456789/quark-auto-save/compare/3b9ee5e..fix-scheduler-deadlock
+```
+
+**应该看到：**
+- ✅ **只有 1 个文件改动**：`app/run.py`
+- ✅ **+16 行，-1 行**
+- ✅ **没有其他临时文档**
+
+**如果还看到临时文档：**
+说明强制推送没有生效，需要重新执行：
+```bash
+git push --force origin fix-scheduler-deadlock
+```
+
+---
+
+## 🚀 提交 PR
+
+### 方法：直接访问链接
+
+```
+https://github.com/Cp0204/quark-auto-save/compare/main...ypq123456789:quark-auto-save:fix-scheduler-deadlock
+```
+
+---
+
+## 📋 PR 信息
+
+### 标题
+```
+🐛 修复 APScheduler 调度器参数配置，避免任务错过时堆积
+```
+
+### 描述
+```markdown
+## 问题描述
+
+定时任务执行时，如果某次任务执行时间过长，会导致后续任务被跳过：
+
+```
+[WARNING] Execution of job "run_python" skipped: maximum number of running instances reached (1)
+```
+
+## 问题原因
+
+APScheduler 的 `scheduler.add_job()` 调用缺少关键参数：
+- 缺少 `coalesce` 参数，导致错过的任务会堆积
+- 缺少 `misfire_grace_time` 参数，错过的任务会无限期等待  
+- 缺少 `replace_existing` 参数，重新加载时可能产生重复任务
+
+## 解决方案
+
+在 `reload_tasks()` 函数中为 `scheduler.add_job()` 添加参数：
+
+```python
+scheduler.add_job(
+    run_python,
+    trigger=trigger,
+    args=[f"{SCRIPT_PATH} {CONFIG_PATH}"],
+    id=SCRIPT_PATH,
+    max_instances=1,          # 保持单实例运行
+    coalesce=True,            # ✨ 合并错过的任务，只执行一次
+    misfire_grace_time=300,   # ✨ 错过任务的宽限期（5分钟）
+    replace_existing=True,    # ✨ 重新加载时替换已存在的任务
+)
+```
+
+同时改进 `run_python()` 函数：
+- 超时后主动终止子进程
+- 添加 `finally` 块确保函数正常返回
+
+## 测试结果
+
+✅ VPS 实测 24 小时稳定运行
+✅ 任务每 5 分钟正常执行（2-3 秒完成）
+✅ 不再出现 "skipped: maximum number of running instances reached" 警告
+
+**修复前的日志：**
+```
+[10-11 13:40:00][INFO] Running job "run_python"
+[10-11 13:45:00][WARNING] skipped: maximum number of running instances reached (1)
+[10-11 13:50:00][WARNING] skipped: maximum number of running instances reached (1)
+... (持续 6 小时)
+```
+
+**修复后的日志：**
+```
+[10-12 14:50:02][INFO] >>> 任务执行成功
+[10-12 14:50:02][INFO] Job "run_python" executed successfully
+[10-12 14:55:00][INFO] Running job "run_python"  ← 后续任务正常执行
+[10-12 14:55:02][INFO] >>> 任务执行成功
+```
+
+## 影响范围
+
+- ✅ 向后兼容，不影响现有功能
+- ✅ 无新依赖，仅调整 APScheduler 参数
+- ✅ 适用所有使用定时任务的场景
+```
+
+---
+
+## ✅ 检查清单
+
+提交 PR 前确认：
+
+- [ ] 只修改了 `app/run.py` 一个文件
+- [ ] 没有临时文档（如 .md、.sh 等）
+- [ ] 提交信息清晰规范
+- [ ] 在实际环境测试通过
+
+---
+
+## 🎯 提交步骤
+
+1. **验证改动**（上面的链接）
+2. **访问创建 PR 链接**
+3. **填写标题和描述**
+4. **点击 "Create pull request"**
+5. **等待维护者审核**
+
+完成！🎉
