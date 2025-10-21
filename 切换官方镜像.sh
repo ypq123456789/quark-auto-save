@@ -36,7 +36,7 @@ echo ""
 
 # 拉取最新镜像
 echo "3️⃣ 拉取官方最新镜像..."
-if docker pull soulteary/quark-auto-save:latest; then
+if docker pull cp0204/quark-auto-save:latest; then
     echo "   ✅ 镜像拉取成功"
 else
     echo "   ❌ 镜像拉取失败，请检查网络"
@@ -53,7 +53,7 @@ if docker run -d \
   -v /root/quark-auto-save/config:/app/config \
   -e TZ=Asia/Shanghai \
   -e TASK_TIMEOUT=1800 \
-  soulteary/quark-auto-save:latest >/dev/null; then
+  cp0204/quark-auto-save:latest >/dev/null; then
     echo "   ✅ 容器启动成功"
 else
     echo "   ❌ 容器启动失败"
