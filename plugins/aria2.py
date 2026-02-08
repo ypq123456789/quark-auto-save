@@ -11,6 +11,7 @@ class Aria2:
     }
     default_task_config = {
         "auto_download": False,  # 是否自动添加下载任务
+        "download_path": "",  # 留空时跟随夸克网盘目录结构（dir/夸克路径），填写时下载到 dir/download_path/
         "pause": False,  # 添加任务后为暂停状态，不自动开始（手动下载）
     }
     is_active = False
@@ -54,7 +55,12 @@ class Aria2:
             for index, file_url in enumerate(file_urls):
                 file_path = file_paths[index]
                 print(f"📥 Aria2下载: {file_path}")
-                local_path = f"{self.dir}{file_paths[index]}"
+                if task_config.get("download_path"):
+                    file_name = os.path.basename(file_path)
+                    download_path = task_config.get("download_path").strip("/")
+                    local_path = f"{self.dir}/{download_path}/{file_name}"
+                else:
+                    local_path = f"{self.dir}{file_path}"
                 aria2_params = [
                     [file_url],
                     {
